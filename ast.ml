@@ -16,6 +16,11 @@ type stmt =
   | For of expr * expr * expr * stmt
   | While of expr * stmt
 
+(*
+ * this is an OCaml record like a C Struct
+ * fname is the identifier name and string 
+ * is the type
+ *)
 type func_decl = {
     fname : string;
     formals : string list;
@@ -23,6 +28,11 @@ type func_decl = {
     body : stmt list;
   }
 
+(*
+ * This is declaring a type "program" that is
+ * a tuple (i.e. (value1, value2)) of a
+ * (list of strings, list of func_decls)
+ *)
 type program = string list * func_decl list
 
 let rec string_of_expr = function
@@ -61,6 +71,9 @@ let string_of_fdecl fdecl =
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
+(*
+ * Entry point called by microc.ml
+ *)
 let string_of_program (vars, funcs) =
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
   String.concat "\n" (List.map string_of_fdecl funcs)

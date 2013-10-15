@@ -1,5 +1,9 @@
 %{ open Ast %}
 
+/*
+ * Some tokens carry a value with them
+ * <int> LITERAL is carrying a value
+ */
 %token SEMI LPAREN RPAREN LBRACE RBRACE COMMA
 %token PLUS MINUS TIMES DIVIDE ASSIGN
 %token EQ NEQ LT LEQ GT GEQ
@@ -16,6 +20,10 @@
 %left PLUS MINUS
 %left TIMES DIVIDE
 
+/*
+ * The start symbol is represented here
+ * The type is the member program of Ast object
+ */
 %start program
 %type <Ast.program> program
 
