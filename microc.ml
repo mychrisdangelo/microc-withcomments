@@ -1,5 +1,14 @@
 type action = Ast | Interpret | Bytecode | Compile
 
+(*
+ * Complete entry point for the running compiler
+ * 
+ * First let _ means don't hold onto the value returned
+ * from the following procedures
+ * 
+ * 
+ * 
+ *)
 let _ =
   let action = if Array.length Sys.argv > 1 then
     List.assoc Sys.argv.(1) [ ("-a", Ast);
