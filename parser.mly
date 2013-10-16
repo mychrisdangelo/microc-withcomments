@@ -34,6 +34,10 @@ program:
  | program vdecl { ($2 :: fst $1), snd $1 }
  | program fdecl { fst $1, ($2 :: snd $1) }
 
+/*
+ * fdecl returns a type func_decl defined in ast.ml
+ * a kind of c struct
+ */
 fdecl:
    ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
      { { fname = $1;
