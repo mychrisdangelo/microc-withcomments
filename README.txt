@@ -8,5 +8,6 @@ Running the Debugger
 
 1. $ ocamldebug ./microc
 2. (ocd) set arguments < helloworld.mc
-3. (ocd) next
+3. (ocd) break @ microc 51
+4. (ocd) run
 
