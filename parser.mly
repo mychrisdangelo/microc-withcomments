@@ -37,6 +37,11 @@ program:
 /*
  * fdecl returns a type func_decl defined in ast.ml
  * a kind of c struct
+ *
+ * The locals and the body will come back in reverse order
+ * So we flip them around to happen in the correct chronological
+ * order written in the source code
+ *
  */
 fdecl:
    ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
@@ -57,9 +62,31 @@ vdecl_list:
     /* nothing */    { [] }
   | vdecl_list vdecl { $2 :: $1 }
 
+/*
+ * If there are several global variables a list will be created
+ * by the program -> program vdecl production
+ *
+ */
 vdecl:
    INT ID SEMI { $2 }
 
+/*
+ * When stmt_list reaches the end of the line (its run out of statements)
+ * then it returns an empty list. The empty list is then the beginning of
+ * the statement list that will be appended to
+ * so the frist appending looks something like this
+ * 
+ * stmt :: []
+ * 
+ * Now the statement list has the first line of the program essentially
+ * at the back of the list (which will later be reversed above. 
+ * recursively this stmt_list is built up by appending stmt after stmt
+ * 
+ * so we end with something like with real values
+ *
+ * { [Call("print", [Expr(Id("a"))]) ; Expr(Assign("a", Literal(42)))] }
+ *
+ */
 stmt_list:
     /* nothing */  { [] }
   | stmt_list stmt { $2 :: $1 }
