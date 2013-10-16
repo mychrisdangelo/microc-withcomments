@@ -73,6 +73,24 @@ let string_of_fdecl fdecl =
 
 (*
  * Entry point called by microc.ml
+ *
+ * Reminder:
+ * List.map f [a1; ... ;an] = [f a1; ... ;f an]
+ * So List.map will execute string_of_vdecl on the list vars
+ *
+ * String.concat seperator_string list_of_strings
+ * Will return a string where of concatenated list_of_strings
+ * with separator_string inserted between each string in that
+ * list 
+ * 
+ * So essentially below the first line is combining 
+ * Everything in the parentheses into one big string and appending
+ * "\n" to the end of it. And then appending the second line
+ *
+ * The second line instead adds a "\n" inbetween each item in the list
+ * returned by (List.map string_of_fdecl funcs)
+ *
+ *
  *)
 let string_of_program (vars, funcs) =
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
