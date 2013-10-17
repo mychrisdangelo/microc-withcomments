@@ -23,11 +23,20 @@
  * Includes path of derivation (_2) just references the path of the derivation:
  *
  * program -> program_2 fdecl
- * {
+ * { ["a"], [ { fname = "main"; 
+ *     			formals = []; 
+ *     			locals = []; 
+ *     			body = [ Expr(Assign("a", Literal(42))) ; 
+ *              Call("print", [ Expr(Id("a)) ]) ] } ] }
  *
- * program_2 -> program vdecl
+ * program_2 -> program_3 vdecl
+ * { ["a"], [] }
  *
- * vdecl ->
+ * program_3 -> nothing
+ * { [], [] }
+ *
+ * vdecl -> INT ID SEMI
+ * { "a" }
  *
  * fdecl -> ID("main") LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
  * { { fname = "main"; 
@@ -83,7 +92,8 @@
 int a;
 main()
 {
+   int b;
+   b = 36;
    a = 42;
-   b = 24;
    print(a);
 }

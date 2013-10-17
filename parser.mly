@@ -29,6 +29,13 @@
 
 %%
 
+/*
+ * program will recursively match for variable declarations
+ * or function declarations. They will be chained together
+ * in a OCaml list. At first appending to an empty list
+ * And then appending to the list with the last item first
+ * appending the list in backwards chronological order
+ */
 program:
    /* nothing */ { [], [] }
  | program vdecl { ($2 :: fst $1), snd $1 }
@@ -41,7 +48,7 @@ program:
  * The locals and the body will come back in reverse order
  * So we flip them around to happen in the correct chronological
  * order written in the source code
- *
+ * 
  */
 fdecl:
    ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE

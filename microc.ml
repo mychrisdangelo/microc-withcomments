@@ -40,16 +40,23 @@ let _ =
    * refers to the token member function created in the
    * scanner.mll document sending lexbuf in as the argument
    * to the token function.
-   * 
-   *
-   * 
-   *
-   *
    *)
   
   let lexbuf = Lexing.from_channel stdin in
+  (*
+   * program is a tuple representing (vars, funcs)
+   * vars = a list of the global variables declared
+   * funcs = a list of the functions declared/defined
+   *         and all the information that goes with it
+   *)
   let program = Parser.program Scanner.token lexbuf in
   match action with
+    (*
+     * the ast flag is simply a way of reviewing the input program
+     * after being scanned and parsed. We revisit the global variables
+     * parsed and the functions delcared. We print them all out
+     * as we understand them now that they are parsed.
+     *)
     Ast -> let listing = Ast.string_of_program program
            in print_string listing
   | Interpret -> ignore (Interpret.run program)

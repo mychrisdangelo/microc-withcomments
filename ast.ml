@@ -35,6 +35,10 @@ type func_decl = {
  *)
 type program = string list * func_decl list
 
+(*
+ * end of the line
+ * finally pattern matching and giving back the string as appropriate
+ *)
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | Id(s) -> s
@@ -50,6 +54,15 @@ let rec string_of_expr = function
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | Noexpr -> ""
 
+(*
+ * Pattern match and find the type 
+ * statements really encapsulate expressions ("Expr")
+ * As an example when string_of_stmt is handed and expression it is then
+ * sent to string_of_expr to be taken care of there.
+ * still this pattern matcher is still responsible for adding
+ * some syntactic niceties (the carriage return, spacing, the keywords
+ * in human string form and semicolons)
+ *)
 let rec string_of_stmt = function
     Block(stmts) ->
       "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
@@ -63,16 +76,42 @@ let rec string_of_stmt = function
       string_of_expr e3  ^ ") " ^ string_of_stmt s
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
 
+(*
+ * in microc the only variable declarations are for ints
+ * we are adding the human niceties like the spacing, the semicolon
+ * and the carriage return
+ *)
 let string_of_vdecl id = "int " ^ id ^ ";\n"
 
+(*
+ * Big payoff: essentially pull out the members of the fdecl (c-struct like)
+ * object. spit out the function declaration like one normally sees it 
+ * something lik this
+ * 
+ * function_name(var a, var b) 
+ * { 
+ * var c; 
+ * print(c);
+ * }
+ *
+ * With some helper functions string_of_vdecl and string_of_stmt this is done
+ *
+ * String.concat s1 strlst
+ * will concatentate the items in the strlst inserting s1 inbetween
+ * In this case we are sending it "" so that string_of_vdecl really takes over
+ *
+ * List.map will run the same function over the items in the list
+ * [(string_of_vdecl fdecl.local_0) ; ... ; (string_of_vdecl fdecl.locals_n)]
+ *)
 let string_of_fdecl fdecl =
-  fdecl.fname ^ "(" ^ String.concat ", " fdecl.formals ^ ")\n{\n" ^
+  fdecl.fname ^ "(" ^ String.concat ", " fdecl.formals ^ ")\n
+  {\n" ^
   String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
 (*
- * Entry point called by microc.ml
+ * Entry point called by microc -a
  *
  * Reminder:
  * List.map f [a1; ... ;an] = [f a1; ... ;f an]
@@ -89,8 +128,14 @@ let string_of_fdecl fdecl =
  *
  * The second line instead adds a "\n" inbetween each item in the list
  * returned by (List.map string_of_fdecl funcs)
+ * 
+ * The goal of this function is to print the parsed vars and funcs
+ * both are a list that will be digested peice by piece.
+ * vars = the global variables declared
+ * funcs = the declared/defined functions and all their infor
  *
- *
+ * After printing a list of all the variable declarations
+ * print the functions
  *)
 let string_of_program (vars, funcs) =
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
