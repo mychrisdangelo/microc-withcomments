@@ -22,7 +22,9 @@
 
 /*
  * The start symbol is represented here
- * The type is the member program of Ast object
+ * The type is the member program of Ast Module
+ * OCaml reminder: each source file is a module
+ * and everything is public
  */
 %start program
 %type <Ast.program> program

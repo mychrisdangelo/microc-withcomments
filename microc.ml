@@ -59,6 +59,14 @@ let _ =
      *)
     Ast -> let listing = Ast.string_of_program program
            in print_string listing
+    (*
+     * the ignore funciton will allow its argument to execute
+     * and return unit = (). This is necessary to keep the 
+     * return types of let _ = consistent. An OCaml requirement
+     * 
+     * We now head over to the Interpret module to ue the run
+     * member function
+     *)
   | Interpret -> ignore (Interpret.run program)
   | Bytecode -> let listing =
       Bytecode.string_of_prog (Compile.translate program)

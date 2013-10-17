@@ -1,10 +1,34 @@
+(*
+ * bring in all the OCaml types declared in ast.ml
+ *)
 open Ast
 
+(*
+ * Background on OCaml "named strctures"
+ * from Hickey's "Intro to OCaml"
+ * Named structures are defined with the modeul and struct keywords
+ * module name must be upper case. the implementation may
+ * include anything that may occur in a .ml file
+ *
+ * essentially below is defining a mini class.
+ *
+ * Map.Make is producing a "balanced tree" implementation of a
+ * ADT dictionary (key/value). The value that will be returned for
+ * a valid key will be of the type defined in the struct...end
+ *
+ * It appears as thought this NameMap is no different then a normal
+ * map where string is the key and the value is yet to be defined
+ *
+ *)
 module NameMap = Map.Make(struct
   type t = string
   let compare x y = Pervasives.compare x y
 end)
 
+(*
+ * TODO: ReturnException of tuple (int, int NameMap.t)
+ * unknown how int NameMap.t works
+ *)
 exception ReturnException of int * int NameMap.t
 
 (* Main entry point: run a program *)
@@ -12,7 +36,30 @@ exception ReturnException of int * int NameMap.t
 let run (vars, funcs) =
   (* Put function declarations in a symbol table *)
   let func_decls = List.fold_left
-      (fun funcs fdecl -> NameMap.add fdecl.fname fdecl funcs)
+  	  (*
+  	   * OCaml reminder:
+  	   * List.fold_left f a [b1; ...; bn]
+  	   * will produce f (...(f (f a b1) b2)...) bn
+  	   *
+  	   * so in this case we are working with
+	   * List.fold_left (function to add the functions to a NameMap) (empty NameMap) (list of functions)
+       *
+  	   * f   = function that takes in two arguments a (funcs) and b (fdecl)
+  	   *       which is items from the list of functions declared
+       * a   = growing Map. NameMap.add always takes a map argument and adds its key/value
+       *       and returns a map. In fold_left this will be fed into the next iteration
+       *       so NameMap.add will have the "a" continually updating with the new map
+       * b_n = will an iteration through the funcs list of function declarations
+       *
+       * example:
+       *
+       * (NameMap.add (Key: "main") (Value: <<main declaration info>>) current_map)
+       * 
+       * previous naming was pretty confusing and has been simplified below
+       *
+  	   *)
+
+      (fun growing_map function_definition_n -> NameMap.add function_definition_n.fname function_definition_n growing_map)
       NameMap.empty funcs
   in
 

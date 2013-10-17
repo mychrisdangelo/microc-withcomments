@@ -92,8 +92,6 @@
 int a;
 main()
 {
-   int b;
-   b = 36;
    a = 42;
    print(a);
 }

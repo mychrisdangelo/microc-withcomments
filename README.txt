@@ -11,7 +11,7 @@ Running the Debugger
 3. (ocd) break @ microc 52
 4. (ocd) run
 
-Example Session in the Debugger for a peak at the parsed program:
+Example Session in the Debugger for a peak at the parsed program
 
 > ocamldebug ./microc
         OCaml Debugger version 4.01.0
