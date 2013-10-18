@@ -67,8 +67,18 @@ let run (vars, funcs) =
       (fun fmap fd_n -> NameMap.add fd_n.fname fd_n fmap) NameMap.empty funcs
   in (* end of let func_decls = List.fold_left *)
 
+
+  (*
+   * Now that we know all the global variables and we know
+   * all the function declarations we are ready to call main
+   * and potentially any other functions called within main.
+   *
+   * We begin by calling
+   * call <<main fdecl>> [] globals
+   *)
   (* Invoke a function and return an updated global symbol table *)
   let rec call fdecl actuals globals =
+
 
     (* Evaluate an expression and return (value, updated environment) *)
     let rec eval env = function
@@ -151,8 +161,44 @@ let run (vars, funcs) =
 	  raise (ReturnException(v, globals))
     in (* end of let rec exec env = function *)
 
-    (* Enter the function: bind actual values to formal arguments *)
-    let locals =
+    (*
+     * OCaml Reminder:
+     * List.fold_left2 f a [b1; ...; bn] [c1; ...; cn] is
+     * f (... (f (f a b1 c1) b2 c2) ...) bn cn
+     * Invalid_argument is raised if the two lists have different lengths
+     *
+     * Vocabulary refresher:
+     * formal parameters are those for the callee function
+     * add(int a, int b) { return a + b; }
+     *
+     * actual parameters are those for the caller function
+     * int j = 7; add(j, 3);
+     *
+     * actuals   = passed in from the initial call
+     * fdecl     = passed in from the initial call
+     *
+     * List.fold_left2 asks the anonymous function
+     * to iterate through the list of formals for this function
+     * and the list of actuals for this function
+     *
+     * Example fdecl.formals may look like this
+     * Ast.formals = ["x"; "y"]
+     *
+     * Example actuals may look like this
+     * [Ast.Literal 4; Ast.Literal 5]
+     *
+     * So by the end of this function we now have a NameMap named locals
+     * where the key is the local identifier and the value is caller
+     * actual passed in
+     *
+     * at this point we have the locals that came from the function
+     * signature. but not locals from created inside the function body
+     * we still need to put those together
+     *
+     * let locals = RENAMED to let arglocals =
+     * to avoid confusion
+     *)
+    let arglocals =
       try List.fold_left2
 	  (fun locals formal actual -> NameMap.add formal actual locals)
 	  NameMap.empty fdecl.formals actuals
@@ -160,13 +206,31 @@ let run (vars, funcs) =
 	raise (Failure ("wrong number of arguments passed to " ^ fdecl.fname))
     in (* end of let locals = *)
 
-
-    (* Initialize local variables to 0 *)
+    (*
+     * Now we compile the locals that exist in the fdecl body
+     * We do this by using or arglocals name map as a starting point
+     *
+     * Notice that if there is a variable name in arglocals that has the same
+     * key as one in the locals it will be overidden with 0
+     *
+     *)
     let locals = List.fold_left
-	(fun locals local -> NameMap.add local 0 locals) locals fdecl.locals
+	(fun lmap ld -> NameMap.add ld 0 lmap) arglocals fdecl.locals
     in (* end of let locals = List.fold_left *)
 
-    (* Execute each statement in sequence, return updated global symbol table *)
+    (*
+     * Finally after the below lines have made the initial call to
+     * the "main" function we find our selves dropping down to here
+     * This is a subsequent entry point
+     *
+     * here the return value is the second item in the tuple that
+     * is returned from the call to (list.fold_left exec ...)
+     *
+     * globals    = passed in from the initial call for "main"
+     * fdecl.body = is the list of expressions that came in
+     *              from the "main" call.
+     * locals     = comes from a processing immediately above
+     *)
     snd (List.fold_left exec (locals, globals) fdecl.body)
 
   (* Run a program: initialize global variables to 0, find and run "main" *)
@@ -195,6 +259,8 @@ let run (vars, funcs) =
   in (* end of let globals = List.fold_left *)
      try
      (*
+      * Entry point into function "main"
+      *
       * NameMap.find will lookup the key "main" in the map func_decls
       * And will return the func_decls if it si found
       *
