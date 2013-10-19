@@ -213,6 +213,9 @@ let run (vars, funcs) =
      * Notice that if there is a variable name in arglocals that has the same
      * key as one in the locals it will be overidden with 0
      *
+     * Note that there is no check to see if a local in the function body
+     * is already in the local symbol table. They are simply overridden
+     *
      *)
     let locals = List.fold_left
 	(fun lmap ld -> NameMap.add ld 0 lmap) arglocals fdecl.locals
