@@ -81,6 +81,17 @@ let run (vars, funcs) =
 
     (* Evaluate an expression and return (value, updated environment) *)
     let rec eval env = function
+        (*
+         * Following our example with hello2.mc
+         * 
+         * We've are currently executing eval with the following attributes
+         * eval (locals = ["b": 0], globals = ["a": 0]) (Ast.Literal 42)
+         *
+         * We've arrived here because we've matched to literal
+         * because nothing changes for the literal we can return the environment
+         * exactly as it was received and we return the result of the Literal
+         * i
+         *)
 	      Literal(i) -> i, env
       | Noexpr -> 1, env (* must be non-zero for the for loop predicate *)
       | Id(var) -> let locals, globals = env 
@@ -88,8 +99,11 @@ let run (vars, funcs) =
           if NameMap.mem var locals then (NameMap.find var locals), env 
           else if NameMap.mem var globals then (NameMap.find var globals), env 
           else raise (Failure ("undeclared identifier " ^ var))
-      | Binop(e1, op, e2) -> let v1, env = eval env e1 in let v2, env = eval env e2 in let boolean i = if i then 1 else 0 in
-	      (match op with
+      | Binop(e1, op, e2) -> 
+          let v1, env = eval env e1 in 
+          let v2, env = eval env e2 in 
+          let boolean i = if i then 1 else 0 in
+	        (match op with
 	          Add -> v1 + v2
 	        | Sub -> v1 - v2
 	        | Mult -> v1 * v2
@@ -100,8 +114,36 @@ let run (vars, funcs) =
 	        | Leq -> boolean (v1 <= v2)
 	        | Greater -> boolean (v1 > v2)
 	        | Geq -> boolean (v1 >= v2)), env
-      | Assign(var, e) -> let v, (locals, globals) = eval env e 
-        in 
+      (*
+       * Following our example we've now called eval env with
+       * eval (locals = ["b": 0], globals = ["a": 0]) (Ast.Expr (Ast.Assign ("b", Ast.Literal 42)))
+       *
+       * We arrive at this match and set the following
+       * var = "b"
+       * e   = Ast.Literal 42
+       *
+       * let v, (locals, globals) = eval env e
+       * will take the expression that is possible on the right side of the
+       * assignment and work on it first. The result of this function call
+       * will result in a return value that is fed to "v" the final value
+       * and we will also receive an updated environment in the form (locals, globals)
+       * See the above for that process
+       *
+       * Finally we arrive at
+       * v = 42
+       * (locals, globals) = whatever they may be. but in this example nothing has changed
+       *
+       * First we check if the variable in this assignment is in the locals by using
+       * NameMap.mem. If it is we assign the value in the NameMap. And the return value is
+       * the new locals NameMap and same globals NameMap.
+       *
+       * If we don't find it in the locals, but we find it in the globals we do the same procedure
+       * in the globals and send back the environment with no change to the locals.
+       *
+       * If the variable name is not found then we raise an exception
+       *
+       *)
+      | Assign(var, e) -> let v, (locals, globals) = eval env e in 
           if NameMap.mem var locals then v, (NameMap.add var v locals, globals) 
           else if NameMap.mem var globals then v, (locals, NameMap.add var v globals)
 	        else raise (Failure ("undeclared identifier " ^ var))
@@ -179,7 +221,14 @@ let run (vars, funcs) =
          * after the equal sign that fits into a size-2 tuple
          * like (x, y). In this case however _ inidicates that we
          * are not interested in the result. So we will simply catch
-         * env
+         * env. The return value from the "eval" function is (result, (locals, globals))
+         * When we finally reach the point where we are analyzing the
+         * Expr below we are no longer interested in the return value of the expression
+         * for instance if the source code was
+         * b = 42;
+         * we are not interested in the return value of b = 42; we are interested
+         * only in the way that this expression has influenced the environment
+         * which is (locals, globals) not the first item so we neglect it with _
          *
          * eval env e
          * calls the function in the far above code. In our example
@@ -192,6 +241,10 @@ let run (vars, funcs) =
          * env and returns it
          * this is the new global state after executing the expression
          *
+         * following our example when we come back from the eval call
+         * our return value in the let will look like this
+         *
+         * env = (["b": 42], ["a": 0])
          *)
       | Expr(e) -> let _, env = eval env e in env
       | If(e, s1, s2) -> let v, env = eval env e in exec env (if v != 0 then s1 else s2)
