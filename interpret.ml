@@ -79,86 +79,125 @@ let run (vars, funcs) =
   (* Invoke a function and return an updated global symbol table *)
   let rec call fdecl actuals globals =
 
-
     (* Evaluate an expression and return (value, updated environment) *)
     let rec eval env = function
-	Literal(i) -> i, env
+	      Literal(i) -> i, env
       | Noexpr -> 1, env (* must be non-zero for the for loop predicate *)
-      | Id(var) ->
-	  let locals, globals = env in
-	  if NameMap.mem var locals then
-	    (NameMap.find var locals), env
-	  else if NameMap.mem var globals then
-	    (NameMap.find var globals), env
-	  else raise (Failure ("undeclared identifier " ^ var))
-      | Binop(e1, op, e2) ->
-	  let v1, env = eval env e1 in
-          let v2, env = eval env e2 in
-	  let boolean i = if i then 1 else 0 in
-	  (match op with
-	    Add -> v1 + v2
-	  | Sub -> v1 - v2
-	  | Mult -> v1 * v2
-	  | Div -> v1 / v2
-	  | Equal -> boolean (v1 = v2)
-	  | Neq -> boolean (v1 != v2)
-	  | Less -> boolean (v1 < v2)
-	  | Leq -> boolean (v1 <= v2)
-	  | Greater -> boolean (v1 > v2)
-	  | Geq -> boolean (v1 >= v2)), env
-      | Assign(var, e) ->
-	  let v, (locals, globals) = eval env e in
-	  if NameMap.mem var locals then
-	    v, (NameMap.add var v locals, globals)
-	  else if NameMap.mem var globals then
-	    v, (locals, NameMap.add var v globals)
-	  else raise (Failure ("undeclared identifier " ^ var))
-      | Call("print", [e]) ->
-	  let v, env = eval env e in
-	  print_endline (string_of_int v);
-	  0, env
-      | Call(f, actuals) ->
-	  let fdecl =
-	    try NameMap.find f func_decls
-	    with Not_found -> raise (Failure ("undefined function " ^ f))
-	  in
-	  let actuals, env = List.fold_left
-	      (fun (actuals, env) actual ->
-		let v, env = eval env actual in v :: actuals, env)
-   	      ([], env) (List.rev actuals)
-	  in
-	  let (locals, globals) = env in
-	  try
-	    let globals = call fdecl actuals globals
-	    in 0, (locals, globals)
-	  with ReturnException(v, globals) -> v, (locals, globals)
+      | Id(var) -> let locals, globals = env 
+        in 
+          if NameMap.mem var locals then (NameMap.find var locals), env 
+          else if NameMap.mem var globals then (NameMap.find var globals), env 
+          else raise (Failure ("undeclared identifier " ^ var))
+      | Binop(e1, op, e2) -> let v1, env = eval env e1 in let v2, env = eval env e2 in let boolean i = if i then 1 else 0 in
+	      (match op with
+	          Add -> v1 + v2
+	        | Sub -> v1 - v2
+	        | Mult -> v1 * v2
+	        | Div -> v1 / v2
+	        | Equal -> boolean (v1 = v2)
+	        | Neq -> boolean (v1 != v2)
+	        | Less -> boolean (v1 < v2)
+	        | Leq -> boolean (v1 <= v2)
+	        | Greater -> boolean (v1 > v2)
+	        | Geq -> boolean (v1 >= v2)), env
+      | Assign(var, e) -> let v, (locals, globals) = eval env e 
+        in 
+          if NameMap.mem var locals then v, (NameMap.add var v locals, globals) 
+          else if NameMap.mem var globals then v, (locals, NameMap.add var v globals)
+	        else raise (Failure ("undeclared identifier " ^ var))
+      | Call("print", [e]) -> let v, env = eval env e in print_endline (string_of_int v); 0, env
+      | Call(f, actuals) -> let fdecl = try NameMap.find f func_decls with Not_found -> raise (Failure ("undefined function " ^ f))
+	      in
+	        let actuals, env = List.fold_left (fun (actuals, env) actual -> let v, env = eval env actual in v :: actuals, env) ([], env) (List.rev actuals)
+	        in
+	          let (locals, globals) = env 
+            in 
+              try 
+                let globals = call fdecl actuals globals 
+                in 
+                  0, (locals, globals) 
+              with ReturnException(v, globals) -> v, (locals, globals)
     in (* end of let rec eval env = function *)
 
+    (*
+     * the exec function will be caleld with the arguments
+     *
+     * env = (locals, globals) where locals is constructed from the
+     *       prodedures below and globals is passed in from the first
+     *       call of main. Reminder that fdecl is holding the function
+     *       definitions as passed in from the "call" but we don't need
+     *       to worry about that for now.
+     *
+     * pattern_matching_argument = fdecl.body that is passed in 
+     *                             from the call below some distance
+     *                             below starting with
+     *                             snd (list.fold_left exec... ) 
+     *
+     * The return value of this function will be an updated invironment
+     * which consists of (locals, globals). 
+     *
+     * One Example for the hello2.mc program: 
+     * exec 
+     * (locals = ["b": 0], globals = ["a": 0]) 
+     * body =
+     *     [Ast.Expr (Ast.Assign ("b", Ast.Literal 42));
+     *      Ast.Expr (Ast.Assign ("a", Ast.Call ("inc", [Ast.Id "b"])));
+     *      Ast.Expr (Ast.Call ("print", [Ast.Id "a"]))]
+     *
+     *)
     (* Execute a statement and return an updated environment *)
     let rec exec env = function
-	Block(stmts) -> List.fold_left exec env stmts
+        (*
+         * Block as defined in ast.ml is a stmt list
+         * a stmt is also an expression
+         * therefore the body sent in to be pattern matched
+         * is a block and will be matched here
+         * 
+         * Using fold_left perform this function again
+         * using the environment we still have
+         * on the list of statements one by one from
+         * left to right
+         * 
+         * OCaml reminder:
+         * List.fold_left f a [b1; ...; bn]
+         * will produce f (...(f (f a b1) b2)...) bn
+         *
+         * What will be returned from each exec is an updated
+         * environment therefore the "a" in the above OCaml reminder
+         * will be updated appropriately for each new executation
+         *)
+	      Block(stmts) -> List.fold_left exec env stmts
+        (*
+         * Using the example above as a guide...
+         * Our first expression is Ast.Assign ("b", Ast.Literal 42))
+         * 
+         * We've found a match and set the above expression to e
+         * The return value comes after the ->
+         *
+         * let _, env = 
+         * means that we would like to perform some procedure
+         * after the equal sign that fits into a size-2 tuple
+         * like (x, y). In this case however _ inidicates that we
+         * are not interested in the result. So we will simply catch
+         * env
+         *
+         * eval env e
+         * calls the function in the far above code. In our example
+         * It will be calling with the following arguments
+         * eval (locals = ["b": 0], globals = ["a": 0]) (Ast.Expr (Ast.Assign ("b", Ast.Literal 42)))
+         * 
+         * in env
+         * finally when (eval env e)'s result is set to 
+         * _, env the "in env" portion takes the named variable
+         * env and returns it
+         * this is the new global state after executing the expression
+         *
+         *)
       | Expr(e) -> let _, env = eval env e in env
-      | If(e, s1, s2) ->
-	  let v, env = eval env e in
-	  exec env (if v != 0 then s1 else s2)
-      | While(e, s) ->
-	  let rec loop env =
-	    let v, env = eval env e in
-	    if v != 0 then loop (exec env s) else env
-	  in loop env
-      | For(e1, e2, e3, s) ->
-	  let _, env = eval env e1 in
-	  let rec loop env =
-	    let v, env = eval env e2 in
-	    if v != 0 then
-	      let _, env = eval (exec env s) e3 in
-	      loop env
-	    else
-	      env
-	  in loop env
-      | Return(e) ->
-	  let v, (locals, globals) = eval env e in
-	  raise (ReturnException(v, globals))
+      | If(e, s1, s2) -> let v, env = eval env e in exec env (if v != 0 then s1 else s2)
+      | While(e, s) -> let rec loop env = let v, env = eval env e in if v != 0 then loop (exec env s) else env in loop env
+      | For(e1, e2, e3, s) -> let _, env = eval env e1 in let rec loop env = let v, env = eval env e2 in if v != 0 then let _, env = eval (exec env s) e3 in loop env else env in loop env
+      | Return(e) -> let v, (locals, globals) = eval env e in raise (ReturnException(v, globals))
     in (* end of let rec exec env = function *)
 
     (*
