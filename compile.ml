@@ -4,30 +4,98 @@ open Bytecode
 module StringMap = Map.Make(String)
 
 (* Symbol table: Information about all the names in scope *)
+(*
+ * OCaml reminder: this type is a "record" which is like a
+ * C Struct.
+ *)
 type env = {
     function_index : int StringMap.t; (* Index for each function *)
     global_index   : int StringMap.t; (* "Address" for global variables *)
     local_index    : int StringMap.t; (* FP offset for args, locals *)
   }
 
-(* val enum : int -> 'a list -> (int * 'a) list *)
+(* 
+ * val enum : int -> 'a list -> (int * 'a) list 
+ * (output is a (int, somee_type) list)
+ * 
+ * example input: (enum 1 0 ["a", "b"])
+ * hd = "a"
+ * tl = ["b"];
+ * stride = 1
+ * n = 0
+ *
+ * (0, "a") :: enum  1 (0+1) "a"
+ * ...
+ * finally returning [(0, "a"); (1, "b")]
+ *)
 let rec enum stride n = function
     [] -> []
   | hd::tl -> (n, hd) :: enum stride (n+stride) tl
 
-(* val string_map_pairs StringMap 'a -> (int * 'a) list -> StringMap 'a *)
+(* 
+ * val string_map_pairs StringMap 'a -> (int * 'a) list -> StringMap 'a
+ *
+ * example input: StringMap.empty [(0, "a"); (1, "b")]
+ * 
+ * round 1:
+ *  m = StringMap.empty
+ *  i = 0 (from pairs = (0, "a"))
+ *  n = "a" (from pairs = (0, "a"))
+ *  StringMap.add "a" 0 StringMap.emtpy
+ * round 2:
+ *  m = (this is my own map syntax) [("a" : 0)]
+ *  i = 1 
+ *  n = "b"
+ * ...
+ *  finally returning [("a": 0); ("b": 1)]
+ *)
 let string_map_pairs map pairs =
   List.fold_left (fun m (i, n) -> StringMap.add n i m) map pairs
 
 (** Translate a program in AST form into a bytecode program.  Throw an
     exception if something is wrong, e.g., a reference to an unknown
     variable or function *)
+(*
+ * A program in AST form (that will be fed into this program) will
+ * look something like this
+ * 
+ * program: Ast.program =
+ * (["a"],
+ *  [{Ast.fname = "main"; formals = []; locals = ["b"];
+ *    body =
+ *     [Ast.Expr (Ast.Assign ("b", Ast.Literal 42));
+ *      Ast.Expr (Ast.Assign ("a", Ast.Call ("inc", [Ast.Id "b"])));
+ *      Ast.Expr (Ast.Call ("print", [Ast.Id "a"]))]};
+ *   {Ast.fname = "inc"; formals = ["x"]; locals = ["y"];
+ *    body =
+ *     [Ast.Expr (Ast.Assign ("y", Ast.Literal 1));
+ *      Ast.Return (Ast.Binop (Ast.Id "x", Ast.Add, Ast.Id "y"))]}])
+ *
+ *)
 let translate (globals, functions) =
 
-  (* Allocate "addresses" for each global variable *)
+  (* 
+   * Allocate "addresses" for each global variable 
+   * 
+   * global_index will be something like this (this is my own
+   * string map syntax) [("a": 0); ("b": 1)]
+   *)
   let global_indexes = string_map_pairs StringMap.empty (enum 1 0 globals) in
 
-  (* Assign indexes to function names; built-in "print" is special *)
+  (* 
+   * Assign indexes to function names; built-in "print" is special 
+   * 
+   * first start with "print" as a built in function with position -1
+   * this is fed as the starting map to build the rest of the function
+   * map. 
+   *
+   * Ocaml reminder: List.map f [a1; ... ; an] = [f a1; ... ;f an]
+   * So in the context below the function list is a bunch of Ast.func_decls
+   * iteratively stored in f we return the f.name
+   * example: ["main"; "inc"]
+   *
+   *
+   *)
   let built_in_functions = StringMap.add "print" (-1) StringMap.empty in
   let function_indexes = string_map_pairs built_in_functions
       (enum 1 1 (List.map (fun f -> f.fname) functions)) in
