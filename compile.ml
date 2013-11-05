@@ -112,7 +112,9 @@ let translate (globals, functions) =
   (* 
    * Translate a function in AST form into a list of bytecode statements 
    * 
-   * See FIG.1 below for where this is called
+   * See FIG.1 below for where this function is called
+   *
+   * env is a record type defined above.
    *)
   let translate env fdecl =
     (* Bookkeeping: FP offsets for locals and arguments *)
@@ -162,7 +164,9 @@ let translate (globals, functions) =
 		 global_index = global_indexes;
 		 local_index = StringMap.empty } in
 
-  (* Code executed to start the program: Jsr main; halt *)
+  (* 
+   * Code executed to start the program: Jsr main; halt 
+   *)
   let entry_function = try
     [Jsr (StringMap.find "main" function_indexes); Hlt]
   with Not_found -> raise (Failure ("no \"main\" function"))
@@ -194,10 +198,31 @@ let translate (globals, functions) =
    * let sum = (fun i -> (fun j -> i + j));;
    *
    * So in the context below
-   * List.map wil execute (translate env) iterating over the list functions
-   * Example:
-   * TODO
+   * List.map will execute (translate env) iterating over the list functions
+   * The function call begins with env (env type) that is defined above. Reminder
+   * 
+   * env = (env type defined above) and th value is defined above
+   * right under the declaration for translate. it is...
+   * { env with local_index = string_map_pairs
+   *   StringMap.empty (local_offsets @ formal_offsets) }
+   * 
+   * functions = (the parameter that was passed in) and is a list of
+   * Ast.func_decls that would look something like this
+   *   [{Ast.fname = "main"; formals = []; locals = ["b"];
+   *    body =
+   *     [Ast.Expr (Ast.Assign ("b", Ast.Literal 42));
+   *      Ast.Expr (Ast.Assign ("a", Ast.Call ("inc", [Ast.Id "b"])));
+   *      Ast.Expr (Ast.Call ("print", [Ast.Id "a"]))]};
+   *   {Ast.fname = "inc"; formals = ["x"]; locals = ["y"];
+   *    body =
+   *     [Ast.Expr (Ast.Assign ("y", Ast.Literal 1));
+   *      Ast.Return (Ast.Binop (Ast.Id "x", Ast.Add, Ast.Id "y"))]}]
    *  
+   * entry_function = (declared immediately above and discussed there)
+   *
+   * The RESULT of the the below operation is 
+   * func_bodies =  
+   *
    *)
   let func_bodies = entry_function :: List.map (translate env) functions in
 
