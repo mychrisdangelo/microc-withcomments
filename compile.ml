@@ -93,14 +93,27 @@ let translate (globals, functions) =
    * So in the context below the function list is a bunch of Ast.func_decls
    * iteratively stored in f we return the f.name
    * example: ["main"; "inc"]
-   *
+   * 
+   * enum goes through and assigns a number returnign something like this:
+   * [(1, "main"); (2, "inc")]
+   * 
+   * later this is put into string map pairs like global indexes finally
+   * resulting in a map that looks like this (my madeup syntax):
+   * [("print": -1); ("main": 1); ("inc": 2)]
+   * 
+   * to inspect the above you could insert this expression
+   * ignore (print_int (StringMap.find "main" function_indexes));
    *
    *)
   let built_in_functions = StringMap.add "print" (-1) StringMap.empty in
   let function_indexes = string_map_pairs built_in_functions
       (enum 1 1 (List.map (fun f -> f.fname) functions)) in
 
-  (* Translate a function in AST form into a list of bytecode statements *)
+  (* 
+   * Translate a function in AST form into a list of bytecode statements 
+   * 
+   * See FIG.1 below for where this is called
+   *)
   let translate env fdecl =
     (* Bookkeeping: FP offsets for locals and arguments *)
     let num_formals = List.length fdecl.formals
@@ -155,7 +168,37 @@ let translate (globals, functions) =
   with Not_found -> raise (Failure ("no \"main\" function"))
   in
     
-  (* Compile the functions *)
+  (* 
+   * Compile the functions
+   * 
+   * FIG.1
+   * (translate env) is actually the call of the function defined above
+   *  let translate env fdecl =
+   * 
+   * To explain this we'll need to review "Currying" (named after Haskell Curry).
+   * Below is an example ocaml toplevel interaction
+   * # let add a b = a + b;;
+   * val add : int -> int -> int = <fun>
+   * # add 3 4;;
+   * - : int = 7
+   * # (add 3) 4;;
+   * - : int = 7
+   *
+   * What's happening above?
+   * ocaml only uses functions with one parameter. functions with more than
+   * one parameter are "currying" or chaining functions together.
+   * 
+   * The result of the function declaration can be seen below more clearly
+   * let sum = fun i j -> i + j;;
+   * is really
+   * let sum = (fun i -> (fun j -> i + j));;
+   *
+   * So in the context below
+   * List.map wil execute (translate env) iterating over the list functions
+   * Example:
+   * TODO
+   *  
+   *)
   let func_bodies = entry_function :: List.map (translate env) functions in
 
   (* Calculate function entry points by adding their lengths *)
