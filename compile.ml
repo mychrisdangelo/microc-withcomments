@@ -16,7 +16,11 @@ type env = {
 
 (* 
  * val enum : int -> 'a list -> (int * 'a) list 
- * (output is a (int, somee_type) list)
+ * (output is a (int, some_type) list)
+ * OCaml Reminder Example:
+ * The type identity : 'a -> 'a says that the identity function
+ * takes an argument of some arbitrary type 'a and returns a value
+ * of the same type 'a
  * 
  * example input: (enum 1 0 ["a", "b"])
  * hd = "a"
@@ -114,14 +118,49 @@ let translate (globals, functions) =
    * 
    * See FIG.1 below for where this function is called
    *
-   * env is a record type defined above.
+   * env is of "env" record type defined above.
+   *
    *)
   let translate env fdecl =
-    (* Bookkeeping: FP offsets for locals and arguments *)
+    (* 
+     * Bookkeeping: FP offsets for locals and arguments 
+     *)
+    (* 
+     * OCaml reminder:
+     * in the below the use of keywords "let" and "and" are used
+     * to chain a bunch of local variables.
+     * Example where the application is close by:
+     * # let x = 3 and y = 4 in x + y;;
+     * - : int = 7
+     * 
+     * Reminder that (enum 1 1 fdecl.locals) will retrun a list of
+     * tuples with the "offset" for each local variable
+     * in our running example for "main": [(1, "b")]
+     *
+     * the formal_offsets use a different 'protocol' starting the offset
+     * from -1 and incrementing each point by -2. So for the "inc" function
+     * in our running example: [(-1, "x")]
+     *)
     let num_formals = List.length fdecl.formals
     and num_locals = List.length fdecl.locals
     and local_offsets = enum 1 1 fdecl.locals
     and formal_offsets = enum (-1) (-2) fdecl.formals in
+    (*
+     * OCaml reminder:
+     * a record can be filled manually using the keyword with
+     * below env is being set to an env type with the "c-struct-like-item"
+     * local_index set to the result of string_map_pairs
+     *
+     * OCaml reminder
+     * the @ symbol is used to concatentate to lists. example:
+     * [1; 2] @ [3; 4];; gives [1; 2; 3; 4]
+     *
+     * So in our example of inc we have just concatenated a list
+     * of our formals with locals (because at this point) we 
+     * think of them as the same scope of locals. So we have now
+     * formed a list like this for function "inc" [("y", 1); ("x", -1)]
+     * which is set to local_index
+     *)
     let env = { env with local_index = string_map_pairs
 		  StringMap.empty (local_offsets @ formal_offsets) } in
 
@@ -166,6 +205,32 @@ let translate (globals, functions) =
 
   (* 
    * Code executed to start the program: Jsr main; halt 
+   * 
+   * Ocaml reminder:
+   * Jsr is a special algebraic data type that has been declared in
+   * the file bytecode.ml simplified here
+   *
+   * type bstmt =
+   *     ...
+   *    | Jsr of int    (* Call function by absolute address *)
+   *
+   * So, Jsr is essentially an int. Note that tage names must be globally unique
+   * requirement for type inference. And they must begin with a capital letter.
+   * This Identifier is also called the constructor name. THat's right Jsr is
+   * a constructor. So Jsr (3) will create a Jsr type of value 3.
+   *
+   * Another OCaml simple reminder:
+   * try ... with is a try ... catch block. Not_found is the type of Exception
+   * we're expected to catch. Failure is a an exception type. that we are
+   * throwing ourselves instead of letting the standard "Not_found" bubble up
+   *
+   * The try block works like this:
+   * We get the function index of "main" (which in our example is 1).
+   * Jsr is a constructor that forms a Jsr type of value 1. The result of this
+   * try block is [Jsr(1); Hlt]
+   * 
+   * Hlt is another type defined in bytecode.ml that is used to communicate
+   * end of execution is here "Halt".
    *)
   let entry_function = try
     [Jsr (StringMap.find "main" function_indexes); Hlt]
