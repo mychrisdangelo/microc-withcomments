@@ -167,6 +167,9 @@ let translate (globals, functions) =
 
     (*
      * Finally the heart of the the translate function.
+
+ *)
+thisIsWhereYouLeftOffEditingComments
      *)
     let rec expr = function
 	Literal i -> [Lit i]
@@ -211,6 +214,11 @@ let translate (globals, functions) =
      * The return value of all these concatenated items is bstmt lists
      * so the concatenate operation is satisfied b/c they are all the same
      * ocaml type
+
+*)
+thisIsWhereYouLeftOffEditingComments
+
+
      *)
     in [Ent num_locals] @      (* Entry: allocate space for locals *)
     stmt (Block fdecl.body) @  (* Body *)
