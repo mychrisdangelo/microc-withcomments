@@ -167,9 +167,9 @@ let translate (globals, functions) =
 
     (*
      * Finally the heart of the the translate function.
-
- *)
-thisIsWhereYouLeftOffEditingComments
+     *
+*)finishHere
+     * 
      *)
     let rec expr = function
 	Literal i -> [Lit i]
@@ -189,6 +189,30 @@ thisIsWhereYouLeftOffEditingComments
       | Noexpr -> []
 
     in (* expr *)
+    (*
+     * Using our running example what's passed in from main is
+     * (Block [Ast.Expr (Ast.Assign ("b", Ast.Literal 42));
+     *                   Ast.Expr (Ast.Assign ("a", Ast.Call ("inc", [Ast.Id "b"])));
+     *                   Ast.Expr (Ast.Call ("print", [Ast.Id "a"])])
+     *  
+     * First round:
+     * We pattern match Block sl
+     * sl = [Ast.Expr (Ast.Assign ("b", Ast.Literal 42));
+     *                 Ast.Expr (Ast.Assign ("a", Ast.Call ("inc", [Ast.Id "b"])));
+     *                 Ast.Expr (Ast.Call ("print", [Ast.Id "a"])]
+     *
+     * The below is the result of the pattern match
+     * List.concat (List.map stmt sl) 
+     * the map function will be used to run the function stmt over each
+     * item in the sl list. And will List.concat will concatenate the list together
+     * piece by piece.
+     *
+     * Second Round (first item in sl list):
+     * We pattern match to Ast.Expr. the result of this is a call to the function
+     * defined above expr (Ast.Expr (Ast.Assign ("b", Ast.Literal 42)) @ [Rts 0]
+     * we continue this example above in the expr function
+     * 
+     *)
     let rec stmt = function
 	Block sl     ->  List.concat (List.map stmt sl)
       | Expr e       -> expr e @ [Drp]
@@ -214,11 +238,13 @@ thisIsWhereYouLeftOffEditingComments
      * The return value of all these concatenated items is bstmt lists
      * so the concatenate operation is satisfied b/c they are all the same
      * ocaml type
-
-*)
-thisIsWhereYouLeftOffEditingComments
-
-
+     * 
+     * The result for main in our running example is:
+     * [Ent 1] @ 
+     * [stmt (Block [Ast.Expr (Ast.Assign ("b", Ast.Literal 42));
+     *               Ast.Expr (Ast.Assign ("a", Ast.Call ("inc", [Ast.Id "b"])));
+     *               Ast.Expr (Ast.Call ("print", [Ast.Id "a"])])] @
+     * [Lit 0; Rts 0]:q
      *)
     in [Ent num_locals] @      (* Entry: allocate space for locals *)
     stmt (Block fdecl.body) @  (* Body *)
