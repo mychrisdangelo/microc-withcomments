@@ -144,7 +144,8 @@ let translate (globals, functions) =
     let num_formals = List.length fdecl.formals
     and num_locals = List.length fdecl.locals
     and local_offsets = enum 1 1 fdecl.locals
-    and formal_offsets = enum (-1) (-2) fdecl.formals in
+    and formal_offsets = enum (-1) (-2) fdecl.formals in 
+    (* in: num_formals, num_locals, local_offsets, formal_offsets *)
     (*
      * OCaml reminder:
      * a record can be filled manually using the keyword with
@@ -162,8 +163,11 @@ let translate (globals, functions) =
      * which is set to local_index
      *)
     let env = { env with local_index = string_map_pairs
-		  StringMap.empty (local_offsets @ formal_offsets) } in
+		  StringMap.empty (local_offsets @ formal_offsets) } in (* env *)
 
+    (*
+     * Finally the heart of the the translate function.
+     *)
     let rec expr = function
 	Literal i -> [Lit i]
       | Id s ->
@@ -181,7 +185,8 @@ let translate (globals, functions) =
         with Not_found -> raise (Failure ("undefined function " ^ fname)))
       | Noexpr -> []
 
-    in let rec stmt = function
+    in (* expr *)
+    let rec stmt = function
 	Block sl     ->  List.concat (List.map stmt sl)
       | Expr e       -> expr e @ [Drp]
       | Return e     -> expr e @ [Rts num_formals]
@@ -195,13 +200,26 @@ let translate (globals, functions) =
 	  [Bra (1+ List.length b')] @ b' @ e' @
 	  [Bne (-(List.length b' + List.length e'))]
 
+    (*
+     * !! CALLER OF stmt FUNCTION (which consequently calls expr)
+     * !! THIS IS THE RETURN VALUE of "let translate env fdecl ="
+     * 
+     * OCaml reminder: @ concatenates two lists
+     *
+     * Ent, Block, Rts are all defined in the bytecode.ml
+     * example: (Ent value) is using the value in the constructor Ent
+     * The return value of all these concatenated items is bstmt lists
+     * so the concatenate operation is satisfied b/c they are all the same
+     * ocaml type
+     *)
     in [Ent num_locals] @      (* Entry: allocate space for locals *)
     stmt (Block fdecl.body) @  (* Body *)
     [Lit 0; Rts num_formals]   (* Default = return 0 *)
 
-  in let env = { function_index = function_indexes;
+  in (* let translate env fdecl = *)
+  let env = { function_index = function_indexes;
 		 global_index = global_indexes;
-		 local_index = StringMap.empty } in
+		 local_index = StringMap.empty } in (* env_2 overwrites env *)
 
   (* 
    * Code executed to start the program: Jsr main; halt 
@@ -235,7 +253,7 @@ let translate (globals, functions) =
   let entry_function = try
     [Jsr (StringMap.find "main" function_indexes); Hlt]
   with Not_found -> raise (Failure ("no \"main\" function"))
-  in
+  in (* entry_function *)
     
   (* 
    * Compile the functions
@@ -266,10 +284,12 @@ let translate (globals, functions) =
    * List.map will execute (translate env) iterating over the list functions
    * The function call begins with env (env type) that is defined above. Reminder
    * 
-   * env = (env type defined above) and th value is defined above
-   * right under the declaration for translate. it is...
-   * { env with local_index = string_map_pairs
-   *   StringMap.empty (local_offsets @ formal_offsets) }
+   * env = BE VERY CAREFUL HERE. env is delcared twice. That's right. env
+   * is used for a while with the defined value just under the translate
+   * definition (yeah, that's right both translate and env are BOTH used twice).
+   * I digress. env is later overwritten as in this example:
+   * # let env = 3 in let env = 4 in evn;;
+   * -: int = 4
    * 
    * functions = (the parameter that was passed in) and is a list of
    * Ast.func_decls that would look something like this
@@ -285,8 +305,19 @@ let translate (globals, functions) =
    *  
    * entry_function = (declared immediately above and discussed there)
    *
-   * The RESULT of the the below operation is 
-   * func_bodies =  
+   * OCaml Reminder:
+   * this operator ::
+   * is used on the left hand side of sometimes to pattermatch between
+   * head :: tail of a list with the head being one object. However
+   * it is also used as the "cons" operator. Example:
+   * 7 :: [5; 3];; (* Gives [7; 5; 3] *)
+   *
+   * The RESULT of the the below operation is (pseudocode)
+   * func_bodies = [ [Jsr(1); Hlt] ; 
+   *                 [(translate "env for main" "main function") ; 
+   *                  (translate "env for inc" "inc function")] ]
+   * 
+   * 
    *
    *)
   let func_bodies = entry_function :: List.map (translate env) functions in
@@ -296,6 +327,15 @@ let translate (globals, functions) =
       (fun (l,i) f -> (i :: l, (i + List.length f))) ([],0) func_bodies in
   let func_offset = Array.of_list (List.rev fun_offset_list) in
 
+  (*
+   * this is the return value of the translate function
+   * it is a prog type defined in bytecode.ml
+   *
+   * OCaml reminder. The below is essentailly constructing
+   * an instance of a OCaml record with { } for instance
+   * assigning the member num_globals = withThisValue 
+   *
+   *)
   { num_globals = List.length globals;
     (* Concatenate the compiled functions and replace the function
        indexes in Jsr statements with PC values *)

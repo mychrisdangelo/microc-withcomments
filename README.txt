@@ -37,3 +37,33 @@ program: Ast.program =
       [Ast.Expr (Ast.Assign ("b", Ast.Literal 36));
        Ast.Expr (Ast.Assign ("a", Ast.Literal 42));
        Ast.Expr (Ast.Call ("print", [Ast.Id "a"]))]}])
+
+Example Session Generating Bytecode:
+
+> ./microc -b < hello2.mc
+1 global variables
+0 Jsr 2
+1 Hlt
+2 Ent 1
+3 Lit 42
+4 Sfp 1
+5 Drp
+6 Lfp 1
+7 Jsr 15
+8 Str 0
+9 Drp
+10 Lod 0
+11 Jsr -1
+12 Drp
+13 Lit 0
+14 Rts 0
+15 Ent 1
+16 Lit 1
+17 Sfp 1
+18 Drp
+19 Lfp -2
+20 Lfp 1
+21 Add
+22 Rts 1
+23 Lit 0
+24 Rts 1
