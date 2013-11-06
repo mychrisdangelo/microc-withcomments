@@ -7,7 +7,7 @@ Quickstart
 Running the Debugger
 
 1. $ ocamldebug ./microc
-2. (ocd) set arguments < helloworld.mc
+2. (ocd) set arguments < hello.mc
 3. (ocd) break @ microc 52
 4. (ocd) run
 
@@ -16,7 +16,7 @@ Example Session in the Debugger for a peak at the parsed program
 > ocamldebug ./microc
         OCaml Debugger version 4.01.0
 
-(ocd) set arguments < helloworld.mc
+(ocd) set arguments < hello.mc
 (ocd) break @ microc 52
 Loading program... done.
 Breakpoint 1 at 59788: file microc.ml, line 45, characters 16-41
