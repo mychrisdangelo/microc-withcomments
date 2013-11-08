@@ -445,11 +445,28 @@ let translate (globals, functions) =
      * indexes in Jsr statements with PC (Program Counter) values 
      *)
     (*
-     * This is dense so let's break it up:
-     * (function Jsr i when i > 0 -> Jsr func_offset.(i) | _ as s -> s)
+     * First the func_bodies Bytecode.bstmt list list is flattened by List.concat
+     * Then List.map runs the anonymous pattern matching function over each item
+     * in the flattened list. Now the anonymous function does a pattern match 
+     * over each item in the list matching Jsr i. If there is a match AND i > 0
+     * then we return Jsr func_offset.(i) which is the program counter offset
+     * that the functions actually need to be (calculated above). If Jsr i is not
+     * matched OR Jsr i is matched and i <= 0 then we fall through to the alternative
+     * match which is a wildcard _ set to s (via the as function) which results in
+     * returning s. Essentially if Jsr is not found then return the thing already
+     * in the list. Finally Array.of_list turns the whole thing into an array. 
      * 
-     * OCaml Reminder:
-     * when is another way to do pattern matching
+     * OCaml Reminders:
+     *  - keyword "when" is another way to do pattern matching
+     *    from "intro to ocaml": Patterns can also be qualified by a predicate with
+     *    the form pattern when expression. This matches the same values as the pattern
+     *    pattern, but only when the predicate expression evaluates to true. The expression
+     *    is evaluated within the context of the pattern; all variables in the pattern
+     *    are bound tot their matched values
+     *  - List.concat will concatenate everything it sees like this
+     *    # List.concat [[3; 4]; [5; 6]; [7; 8]];;
+     *    - : int list = [3; 4; 5; 6; 7; 8]
+     *
      *
      *)
     text = Array.of_list (List.map (function
