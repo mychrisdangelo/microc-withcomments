@@ -67,3 +67,10 @@ Example Session Generating Bytecode:
 22 Rts 1
 23 Lit 0
 24 Rts 1
+
+Credits:
+
+Stephen Edwards Micro C Compiler: http://www.cs.columbia.edu/~sedwards/classes/2013/w4115-fall/microc.tar.gz
+Stephen Edwards Slides on Micro C Compiler: http://www.cs.columbia.edu/~sedwards/classes/2013/w4115-fall/microc.pdf
+Stephen Edwards Slides on OCaml: http://www.cs.columbia.edu/~sedwards/classes/2013/w4115-fall/ocaml.pdf
+Jason Hickey's, Introduction to OCaml: http://www.cs.caltech.edu/courses/cs134/cs134b/book.pdf

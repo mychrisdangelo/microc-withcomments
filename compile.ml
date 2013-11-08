@@ -440,8 +440,18 @@ let translate (globals, functions) =
    *
    *)
   { num_globals = List.length globals;
-    (* Concatenate the compiled functions and replace the function
-       indexes in Jsr statements with PC values *)
+    (* 
+     * Concatenate the compiled functions and replace the function
+     * indexes in Jsr statements with PC (Program Counter) values 
+     *)
+    (*
+     * This is dense so let's break it up:
+     * (function Jsr i when i > 0 -> Jsr func_offset.(i) | _ as s -> s)
+     * 
+     * OCaml Reminder:
+     * when is another way to do pattern matching
+     *
+     *)
     text = Array.of_list (List.map (function
 	Jsr i when i > 0 -> Jsr func_offset.(i)
       | _ as s -> s) (List.concat func_bodies))
