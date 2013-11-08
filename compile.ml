@@ -166,9 +166,22 @@ let translate (globals, functions) =
 		  StringMap.empty (local_offsets @ formal_offsets) } in (* env *)
 
     (*
-     * Finally the heart of the the translate function.
+     * The other heart of the translate function (used by stmt)
      *
-*)finishHere
+     * continuing with the example from "Second Round" below in the stmt function
+     * expr has been called as
+     * expr (Ast.Assign ("b", Ast.Literal 42)
+     *
+     * So next we pattern match to Assign (s, e) where s = "b", e = 42 which
+     * results in 
+     * (expr 42) @ [Sfp (StringMap.find "b" env.local_index)] results in
+     * [Lit 42] @ [Sfp 1] results in
+     * [(Lit 42); (Sfp 1)] return value
+     * 
+     * Some Reminders:
+     *   - Sfp (Stored Frame Pointer) defined in bytecode.ml is a bstmt algebraic type 
+     *   - env.local_index look something like this for main [("b": 1)]. Again this is
+     *     my madeup syntax for a OCaml map
      * 
      *)
     let rec expr = function
@@ -179,6 +192,12 @@ let translate (globals, functions) =
           with Not_found -> raise (Failure ("undeclared variable " ^ s)))
       | Binop (e1, op, e2) -> expr e1 @ expr e2 @ [Bin op]
       | Assign (s, e) -> expr e @
+      (*
+       * First look in the local scope by trying to find this variable name
+       * in the local scope (i.e. local_index). If not their look in the
+       * global scope and if it's not there well this is definitely
+       * undeclared.
+       *)
 	  (try [Sfp (StringMap.find s env.local_index)]
   	  with Not_found -> try [Str (StringMap.find s env.global_index)]
 	  with Not_found -> raise (Failure ("undeclared variable " ^ s)))
@@ -190,6 +209,9 @@ let translate (globals, functions) =
 
     in (* expr *)
     (*
+     * The heart of the translate function. More or less the start symbol
+     * of the grammar (see p408 dragon book)
+     *
      * Using our running example what's passed in from main is
      * (Block [Ast.Expr (Ast.Assign ("b", Ast.Literal 42));
      *                   Ast.Expr (Ast.Assign ("a", Ast.Call ("inc", [Ast.Id "b"])));
@@ -209,8 +231,12 @@ let translate (globals, functions) =
      *
      * Second Round (first item in sl list):
      * We pattern match to Ast.Expr. the result of this is a call to the function
-     * defined above expr (Ast.Expr (Ast.Assign ("b", Ast.Literal 42)) @ [Rts 0]
-     * we continue this example above in the expr function
+     * defined above expr (Ast.Expr (Ast.Assign ("b", Ast.Literal 42)) @ [Drp]
+     * Reminder: Drp is in bytecode.ml "discard value"
+     * we continue this example above in the expr function. Ultimately resulting in
+     * [Lit 42; Sfp 1; Drp]
+     *
+     * This continues on of course for everything. But that's enought for now.
      * 
      *)
     let rec stmt = function
@@ -229,7 +255,7 @@ let translate (globals, functions) =
 
     (*
      * !! CALLER OF stmt FUNCTION (which consequently calls expr)
-     * !! THIS IS THE RETURN VALUE of "let translate env fdecl ="
+     * !! THIS IS THE RETURN VALUE of the private "let translate env fdecl ="
      * 
      * OCaml reminder: @ concatenates two lists
      *
@@ -244,7 +270,11 @@ let translate (globals, functions) =
      * [stmt (Block [Ast.Expr (Ast.Assign ("b", Ast.Literal 42));
      *               Ast.Expr (Ast.Assign ("a", Ast.Call ("inc", [Ast.Id "b"])));
      *               Ast.Expr (Ast.Call ("print", [Ast.Id "a"])])] @
-     * [Lit 0; Rts 0]:q
+     * [Lit 0; Rts 0]
+     * 
+     * which results in
+     * [Ent 1; Lit 42; Sfp 1; Drp; Lfp 1; Jsr 2; Str 0; Drp; Lod 0; Jsr (-1); Drp; Lit 0; Rts 0]
+     *
      *)
     in [Ent num_locals] @      (* Entry: allocate space for locals *)
     stmt (Block fdecl.body) @  (* Body *)
@@ -350,23 +380,62 @@ let translate (globals, functions) =
    * func_bodies = [ [Jsr(1); Hlt] ; 
    *                 [(translate "env for main" "main function") ; 
    *                  (translate "env for inc" "inc function")] ]
-   * 
-   * 
    *
+   * which results in:
+   * func_bodies: Bytecode.bstmt list list =
+   *         [[Jsr 1; Hlt];
+   *          [Ent 1; Lit 42; Sfp 1; Drp; Lfp 1; Jsr 2; Str 0; Drp; Lod 0; Jsr (-1); Drp; Lit 0; Rts 0];
+   *          [Ent 1; Lit 1; Sfp 1; Drp; Lfp (-2); Lfp 1; Bin Add; Rts 1; Lit 0; Rts 1]]
    *)
-  let func_bodies = entry_function :: List.map (translate env) functions in
+  let func_bodies = entry_function :: List.map (translate env) functions in (* func_bodies *)
 
-  (* Calculate function entry points by adding their lengths *)
+  (* 
+   * Calculate function entry points by adding their lengths 
+   *)
+  (*
+   * In the main function using the result of func_bodies above as an example
+   * List.fold_left will iterate over the function very similar to the to the standard
+   * list enumeration demonstrated in Prof. Edwards on OCaml slide 28.
+   *
+   * OCaml reminder:
+   * List.fold_left f a [b1; ...; bn]
+   * will produce f (...(f (f a b1) b2)...) bn
+   * 
+   * round 1:
+   * l = [], i = 0, f = [Jsr 1; Hlt];
+   * results in ([0], 2)
+   *
+   * round 2:
+   * l = [0], i = 013 f = [Ent 1; Lit 42; Sfp 1; Drp; Lfp 1; Jsr 2; Str 0; Drp; Lod 0; Jsr (-1); Drp; Lit 0; Rts 0];
+   * results in ([2; 0], 15)
+   *
+   * round 3:
+   * l = [2; 0], i = 15, f = [Ent 1; Lit 1; Sfp 1; Drp; Lfp (-2); Lfp 1; Bin Add; Rts 1; Lit 0; Rts 1]]
+   * results in ([15; 2; 0], 25)
+   *
+   * finally:
+   * we take the [15; 2; 0] and pattern match it to fun_off_list
+   * the 25 is matched to _ and therefore disregarded
+   * 
+   *)
   let (fun_offset_list, _) = List.fold_left
       (fun (l,i) f -> (i :: l, (i + List.length f))) ([],0) func_bodies in
+  (*
+   * Array.of_list will just produce an array from our list
+   * List.rev will reverse our list
+   * 
+   * in our example:
+   * func_offset: int array = [|0; 2; 15|]
+   *)
   let func_offset = Array.of_list (List.rev fun_offset_list) in
 
   (*
-   * this is the return value of the translate function
+   * this is the return value of the public translate function
    * it is a prog type defined in bytecode.ml
    *
-   * OCaml reminder. The below is essentailly constructing
-   * an instance of a OCaml record with { } for instance
+   * OCaml reminder. The below is essentially constructing
+   * an instance of a OCaml record "prog" (declared in
+   * bytecode.ml) with { } for instance
    * assigning the member num_globals = withThisValue 
    *
    *)
